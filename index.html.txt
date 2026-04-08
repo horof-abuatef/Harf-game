@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+<meta charset="UTF-8">
+<title>بطولة سباق الحروف – أبو عاطف 🔥</title>
+<style>
+body {
+    background: #111;
+    color: white;
+    font-family: Arial, sans-serif;
+    text-align: center;
+    margin: 0;
+    padding: 0;
+}
+#intro {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background: black;
+}
+#game {
+    display: none;
+    padding: 20px;
+}
+h1 {
+    font-size: 50px;
+    color: gold;
+}
+button {
+    font-size: 20px;
+    padding: 10px 20px;
+    margin: 10px;
+    cursor: pointer;
+    border: none;
+    border-radius: 8px;
+}
+#hexCanvas {
+    background: #222;
+    margin-top: 20px;
+    border-radius: 10px;
+}
+#scoreboard {
+    margin-top: 10px;
+    font-size: 24px;
+}
+</style>
+</head>
+<body>
+
+<div id="intro">
+    <h1>🏆 بطولة سباق الحروف 🏆<br>أبو عاطف 🔥</h1>
+    <button onclick="startGame()">ابدأ البطولة</button>
+    <audio id="introSound" src="intro.mp3"></audio>
+</div>
+
+<div id="game">
+    <div id="scoreboard">
+        🟢 الأخضر: <span id="greenScore">0</span> |
+        🔴 الأحمر: <span id="redScore">0</span> |
+        ⏱ الوقت: <span id="timer">30</span>
+    </div>
+    <div style="margin-top:10px;">
+        <button onclick="setTeam('green')" style="background:#00aa55;color:white;">دور الأخضر</button>
+        <button onclick="setTeam('red')" style="background:#aa0000;color:white;">دور الأحمر</button>
+        <button onclick="startTimer()" style="background:yellow;color:black;">ابدأ المؤقت</button>
+    </div>
+    <canvas id="hexCanvas" width="950" height="600"></canvas>
+    <audio id="crowdSound" src="crowd.mp3"></audio>
+    <audio id="countdownSound" src="countdown.mp3"></audio>
+</div>
+
+<script>
+// الحروف (30 حرف لتتناسب مع 5 صف × 6 أعمدة)
+const letters = ["أ","ب","ت","ث","ج","ح",
+                 "خ","د","ذ","ر","ز","س",
+                 "ش","ص","ض","ط","ظ","ع",
+                 "غ","ف","ق","ك","ل","م",
+                 "ن","هـ","و","ي"];
+
+// 👇 مكتبة الأسئلة (تقدر تعدلها كما تحب)
+const questions = {
+    "أ": "اذكر 5 كلمات تبدأ بحرف أ",
+    "ب": "اذكر 5 كلمات تبدأ بحرف ب",
+    "ت": "اذكر 5 كلمات تبدأ بحرف ت",
+    "ث": "اذكر 5 كلمات تبدأ بحرف ث",
+    "ج": "اذكر 5 كلمات تبدأ بحرف ج",
+    "ح": "اذكر 5 كلمات تبدأ بحرف ح",
+    "خ": "اذكر 5 كلمات تبدأ بحرف خ",
+    "د": "اذكر 5 كلمات تبدأ بحرف د",
+    "ذ": "اذكر 5 كلمات تبدأ بحرف ذ",
+    "ر": "اذكر 5 كلمات تبدأ بحرف ر",
+    "ز": "اذكر 5 كلمات تبدأ بحرف ز",
+    "س": "اذكر 5 كلمات تبدأ بحرف س",
+    "ش": "اذكر 5 كلمات تبدأ بحرف ش",
+    "ص": "اذكر 5 كلمات تبدأ بحرف ص",
+    "ض": "اذكر 5 كلمات تبدأ بحرف ض",
+    "ط": "اذكر 5 كلمات تبدأ بحرف ط",
+    "ظ": "اذكر 5 كلمات تبدأ بحرف ظ",
+    "ع": "اذكر 5 كلمات تبدأ بحرف ع",
+    "غ": "اذكر 5 كلمات تبدأ بحرف غ",
+    "ف": "اذكر 5 كلمات تبدأ بحرف ف",
+    "ق": "اذكر 5 كلمات تبدأ بحرف ق",
+    "ك": "اذكر 5 كلمات تبدأ بحرف ك",
+    "ل": "اذكر 5 كلمات تبدأ بحرف ل",
+    "م": "اذكر 5 كلمات تبدأ بحرف م",
+    "ن": "اذكر 5 كلمات تبدأ بحرف ن",
+    "هـ": "اذكر 5 كلمات تبدأ بحرف هـ",
+    "و": "اذكر 5 كلمات تبدأ بحرف و",
+    "ي": "اذكر 5 كلمات تبدأ بحرف ي"
+};
+
+let currentTeam = "green";
+let greenScore = 0;
+let redScore = 0;
+let timeLeft = 30;
+let timerRunning = false;
+
+const introSound = document.getElementById("introSound");
+const crowdSound = document.getElementById("crowdSound");
+const countdownSound = document.getElementById("countdownSound");
+
+const canvas = document.getElementById("hexCanvas");
+const ctx = canvas.getContext("2d");
+
+let hexItems = [];
+
+function startGame() {
+    document.getElementById("intro").style.display = "none";
+    document.getElementById("game").style.display = "block";
+    introSound.play();
+    drawHexGrid();
+}
+
+function setTeam(team) { currentTeam = team; }
+function addPoint() {
+    if(crowdSound) crowdSound.play();
+    if(currentTeam === "green") {
+        greenScore++; document.getElementById("greenScore").textContent = greenScore;
+    } else {
+        redScore++; document.getElementById("redScore").textContent = redScore;
+    }
+}
+
+// ===== رسم شبكة 5 صف × 6 أعمدة =====
+function drawHexGrid() {
+    const hexSize = 45;
+    const rows = 5;
+    const cols = 6;
+    const startX = 120;
+    const startY = 80;
+    let index = 0;
+    hexItems = [];
+
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+
+    for(let row=0; row<rows; row++){
+        for(let col=0; col<cols; col++){
+            if(index >= letters.length) break;
+            let x = startX + col*hexSize*1.8;
+            let y = startY + row*hexSize*1.6;
+            if(row%2===1) x += hexSize*0.9;
+
+            drawHex(x, y, hexSize, letters[index], "white");
+            hexItems.push({x, y, letter: letters[index], size: hexSize, used:false});
+            index++;
+        }
+    }
+}
+
+function drawHex(x, y, size, letterColor, letter){
+    const angle = Math.PI/3;
+    ctx.fillStyle = letterColor;
+    ctx.strokeStyle = "black";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    for(let i=0;i<6;i++){
+        const px = x + size*Math.cos(angle*i);
+        const py = y + size*Math.sin(angle*i);
+        if(i===0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle="black";
+    ctx.font="20px Arial";
+    ctx.textAlign="center";
+    ctx.textBaseline="middle";
+    ctx.fillText(letter, x, y);
+}
+
+// ===== التفاعل مع النقر =====
+canvas.addEventListener('click', e=>{
+    if(!timerRunning) return;
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+
+    for(let hex of hexItems){
+        if(!hex.used && pointInHex(mx,my,hex)){
+            hex.used=true;
+            addPoint();
+
+            const color = currentTeam==="green"?"#00ff88":"#ff4444";
+            redrawHex(hex,color);
+
+            const q = questions[hex.letter] || اذكر 5 كلمات تبدأ بحرف ${hex.letter};
+            alert(q);
+            break;
+        }
+    }
+});
+
+function pointInHex(px, py, hex){
+    const dx = px-hex.x;
+    const dy = py-hex.y;
+    const distance = Math.sqrt(dx*dx+dy*dy);
+    return distance<hex.size*1.1;
+}
+
+function redrawHex(hex,color){
+    const angle=Math.PI/3;
+    ctx.fillStyle=color;
+    ctx.beginPath();
+    for(let i=0;i<6;i++){
+        const px = hex.x + hex.size*Math.cos(angle*i);
+        const py = hex.y + hex.size*Math.sin(angle*i);
+        if(i===0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle="black";
+    ctx.font="20px Arial";
+    ctx.textAlign="center";
+    ctx.textBaseline="middle";
+    ctx.fillText(hex.letter, hex.x, hex.y);
+}
+
+// ===== المؤقت =====
+function startTimer(){
+    timeLeft=30;
+    timerRunning=true;
+    document.getElementById("timer").textContent = timeLeft;
+    countdown();
+}
+function countdown(){
+    if(timeLeft>0){
+        if(timeLeft<=5 && countdownSound) countdownSound.play();
+        timeLeft--;
+        document.getElementById("timer").textContent=timeLeft;
+        setTimeout(countdown,1000);
+    } else {
+        timerRunning=false;
+        announceWinner();
+    }
+}
+function announceWinner(){
+    let winner="";
+    if(greenScore>redScore) winner="🟢 الفريق الأخضر فاز!";
+    else if(redScore>greenScore) winner="🔴 الفريق الأحمر فاز!";
+    else winner="🤝 تعادل!";
+    alert(winner);
+}
+</script>
+</body>
+</html>
